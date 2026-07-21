@@ -1,5 +1,9 @@
 # FinPulse — Stock Market Monitoring Platform
 
+**Live Deployment:**
+- Frontend (Dashboard): https://finpulse-7mxpoux9kjtzr5ctjp3kbi.streamlit.app/
+- Backend (REST API + docs): https://finpulse-fn4r.onrender.com/docs
+
 FinPulse tracks 20 NSE-listed Indian companies and displays live +
 historical market data (price, market cap, P/E, EPS) through an
 interactive dashboard, backed by a REST API and a SQLite database.
@@ -129,7 +133,11 @@ Dashboard opens at `http://localhost:8501`.
 Note: Render's free tier spins down after inactivity, so the first
 request after idle time can take ~30-60s to wake up — this is why the
 `/refresh` endpoint exists as a manual trigger rather than relying on
-a background scheduler.
+a background scheduler. Because Yahoo Finance also rate-limits/blocks
+cloud-hosting IP ranges more aggressively than home connections, the
+deployed database was seeded once with real data fetched locally
+rather than relying on a live fetch from Render's servers - see
+PROJECT_REPORT.md for details.
 
 ## External APIs / Libraries / AI Tools Used
 
