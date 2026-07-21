@@ -107,7 +107,7 @@ def fetch_and_store_stock(ticker: str, retries: int = 2) -> bool:
         return False
 
 
-def fetch_all(tickers=None, delay_seconds: float = 1.5):
+def fetch_all(tickers=None, delay_seconds: float = 3.0):
     """Fetch every ticker in the list, pausing between each request so we
     don't fire 20 rapid requests at Yahoo Finance and trip its rate
     limiter (this is what was causing 429 errors). Returns

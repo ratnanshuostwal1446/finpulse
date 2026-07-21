@@ -25,21 +25,20 @@ import data_fetcher
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Runs once when the server starts up.
+    # Runs once when the server starts up. Deliberately does NOT fetch
+    # live data here - only sets up the (fast, local) database schema.
+    #
+    # Why: hosting platforms like Render expect the app to bind its port
+    # within a short window after starting. yfinance calls (especially
+    # 20 of them with retries) can take minutes, and cloud IPs get
+    # rate-limited by Yahoo Finance more aggressively than home
+    # connections - so blocking startup on that fetch caused deploys to
+    # time out. Instead, the database starts empty and gets populated by
+    # calling POST /refresh once after the app is live (the Streamlit
+    # dashboard's "Refresh live data" button does exactly this).
     init_db()
-    conn = get_connection()
-    row_count = conn.execute("SELECT COUNT(*) as c FROM stocks").fetchone()["c"]
-    conn.close()
-
-    # If the DB is empty (first ever run), do an initial fetch so the
-    # dashboard isn't blank. On redeploys the DB usually already has data.
-    if row_count == 0:
-        print("[startup] Empty database detected - fetching initial data...")
-        data_fetcher.fetch_all()
-
-    yield  # app runs here
+    yield
     # (no shutdown cleanup needed for SQLite)
-
 
 app = FastAPI(title="FinPulse API", version="1.0", lifespan=lifespan)
 
