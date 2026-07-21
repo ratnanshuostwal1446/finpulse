@@ -20,6 +20,9 @@ import plotly.graph_objects as go
 # For local testing, this points at a locally-running FastAPI instance.
 API_URL = st.secrets.get("API_URL", "http://localhost:8000")
 
+st.sidebar.caption(f"🔍 DEBUG - API_URL resolved to: `{API_URL}`")
+st.sidebar.caption(f"🔍 DEBUG - Secrets keys found: `{list(st.secrets.keys())}`")
+
 st.set_page_config(page_title="FinPulse", page_icon="📈", layout="wide")
 
 
