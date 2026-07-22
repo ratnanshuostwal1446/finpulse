@@ -19,6 +19,7 @@ import plotly.graph_objects as go
 # Change this to your deployed Render backend URL once live.
 # For local testing, this points at a locally-running FastAPI instance.
 API_URL = st.secrets.get("API_URL", "http://localhost:8000")
+
 st.set_page_config(page_title="FinPulse", page_icon="📈", layout="wide")
 
 
@@ -61,7 +62,6 @@ if st.sidebar.button("🔄 Refresh live data"):
     st.cache_data.clear()
 
 st.sidebar.markdown("---")
-st.sidebar.caption(f"Backend: `{API_URL}`")
 
 
 # ---- Main content ---------------------------------------------------------
@@ -82,7 +82,7 @@ if stocks_df.empty:
 summary = get_market_summary()
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Companies Tracked", summary.get("total_companies", "-"))
-col2.metric("Total Market Cap", f"₹{summary.get('total_market_cap', 0):,.0f} Cr"
+col2.metric("Total Market Cap", f"₹{summary.get('total_market_cap', 0) / 1e7:,.0f} Cr"
             if summary.get("total_market_cap") else "-")
 col3.metric("Average P/E Ratio", summary.get("average_pe_ratio", "-"))
 col4.metric("Gainers / Losers",
@@ -94,8 +94,11 @@ st.markdown("---")
 st.subheader("All Tracked Companies")
 display_df = stocks_df[["ticker", "company_name", "sector", "price",
                           "pe_ratio", "eps", "market_cap", "volume"]].copy()
+# Market cap comes from yfinance in raw rupees; convert to crores (1 Cr = 1e7)
+# for readability, matching how Indian equity reports normally present it.
+display_df["market_cap"] = (display_df["market_cap"] / 1e7).round(0)
 display_df.columns = ["Ticker", "Company", "Sector", "Price (₹)",
-                        "P/E", "EPS", "Market Cap", "Volume"]
+                        "P/E", "EPS", "Market Cap (₹ in Cr)", "Volume"]
 st.dataframe(display_df, use_container_width=True, hide_index=True)
 
 st.markdown("---")
@@ -136,16 +139,24 @@ compare_tickers = st.multiselect(
 )
 
 if compare_tickers:
-    compare_df = stocks_df[stocks_df["ticker"].isin(compare_tickers)]
+    compare_df = stocks_df[stocks_df["ticker"].isin(compare_tickers)].copy()
     metric_choice = st.radio(
         "Metric to compare", ["pe_ratio", "eps", "market_cap", "price"],
         horizontal=True,
     )
+    y_values = compare_df[metric_choice]
+    y_label = metric_choice.replace('_', ' ').title()
+    if metric_choice == "market_cap":
+        y_values = y_values / 1e7  # show in crores, consistent with the table above
+        y_label = "Market Cap (₹ in Cr)"
+
     fig2 = go.Figure(data=[go.Bar(
-        x=compare_df["company_name"], y=compare_df[metric_choice],
+        x=compare_df["company_name"], y=y_values,
+        marker_color="#4C78A8",  # calm steel blue instead of the default red
     )])
     fig2.update_layout(
-        title=f"Comparison by {metric_choice.replace('_', ' ').title()}",
+        title=f"Comparison by {y_label}",
+        yaxis_title=y_label,
         height=400,
     )
     st.plotly_chart(fig2, use_container_width=True)
