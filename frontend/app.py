@@ -14,6 +14,7 @@ import streamlit as st
 import requests
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # ---- Config ----------------------------------------------------------
 # Change this to your deployed Render backend URL once live.
@@ -61,6 +62,13 @@ if st.sidebar.button("🔄 Refresh live data"):
     st.sidebar.success(result["message"])
     st.cache_data.clear()
 
+st.sidebar.caption(
+    "ℹ️ Live refresh works reliably when running locally. On the deployed "
+    "version, Yahoo Finance blocks requests from cloud hosting IPs (Render, "
+    "AWS, etc.), so this app relies on data pushed by a scheduled GitHub "
+    "Action instead - see README for details."
+)
+
 st.sidebar.markdown("---")
 
 
@@ -70,13 +78,25 @@ st.title("FinPulse — Market Dashboard")
 try:
     stocks_df = get_stocks()
 except Exception as e:
-    st.error(f"Could not reach the backend API at {API_URL}. "
-              f"Make sure it's running. Error: {e}")
+    st.warning(
+        "⏳ Couldn't reach the backend just now. If this app (or the "
+        "backend on Render) has been idle for a while, it may be waking "
+        "up from sleep - this can take 30-60 seconds on the free tier. "
+        "Please wait a moment and refresh this page."
+    )
+    with st.expander("Technical details"):
+        st.code(f"API_URL: {API_URL}\nError: {e}")
     st.stop()
 
 if stocks_df.empty:
     st.warning("No data yet. Click 'Refresh live data' in the sidebar to fetch it.")
     st.stop()
+
+# Show data freshness - important given the deployed version uses
+# pre-fetched/scheduled data rather than fetching on every request.
+if "last_updated" in stocks_df.columns and not stocks_df["last_updated"].isna().all():
+    most_recent = pd.to_datetime(stocks_df["last_updated"]).max()
+    st.caption(f"📅 Data last updated: {most_recent.strftime('%d %b %Y, %H:%M UTC')}")
 
 # --- Market summary cards ---
 summary = get_market_summary()
@@ -110,19 +130,32 @@ detail = get_stock_detail(selected_ticker)
 history_df = pd.DataFrame(detail["history"])
 
 if not history_df.empty:
-    fig = go.Figure(data=[go.Candlestick(
+    # Two rows sharing the x-axis: candlestick on top, volume bars below -
+    # this is the standard "price + volume" layout used in trading platforms.
+    fig = make_subplots(
+        rows=2, cols=1, shared_xaxes=True,
+        row_heights=[0.75, 0.25], vertical_spacing=0.03,
+    )
+    fig.add_trace(go.Candlestick(
         x=history_df["date"],
-        open=history_df["open"],
-        high=history_df["high"],
-        low=history_df["low"],
-        close=history_df["close"],
+        open=history_df["open"], high=history_df["high"],
+        low=history_df["low"], close=history_df["close"],
         name=selected_ticker,
-    )])
+    ), row=1, col=1)
+
+    # Color each volume bar green/red based on whether that day closed up or down
+    volume_colors = ["#26A69A" if c >= o else "#EF5350"
+                      for c, o in zip(history_df["close"], history_df["open"])]
+    fig.add_trace(go.Bar(
+        x=history_df["date"], y=history_df["volume"],
+        marker_color=volume_colors, name="Volume",
+    ), row=2, col=1)
+
     fig.update_layout(
-        title=f"{detail['stock']['company_name']} — 6 Month Price History",
-        xaxis_title="Date", yaxis_title="Price (₹)",
+        title=f"{detail['stock']['company_name']} — 6 Month Price & Volume History",
+        xaxis2_title="Date", yaxis_title="Price (₹)", yaxis2_title="Volume",
         xaxis_rangeslider_visible=False,
-        height=450,
+        height=550, showlegend=False,
     )
     st.plotly_chart(fig, use_container_width=True)
 else:

@@ -18,14 +18,15 @@ from database import get_connection
 # is reliable. HAL.NS (Hindustan Aeronautics) included as an aerospace/
 # defense sector reference point.
 TICKERS = [
-    "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS",
-    "SBIN.NS", "ITC.NS", "LT.NS", "HINDUNILVR.NS", "BAJFINANCE.NS",
-    "KOTAKBANK.NS", "BHARTIARTL.NS", "ASIANPAINT.NS", "MARUTI.NS",
-    "TITAN.NS", "SUNPHARMA.NS", "WIPRO.NS", "ULTRACEMCO.NS",
-    "TMPV.NS", "HAL.NS",
+    "SIGMAADV.NS",
+    "DATAPATTNS.NS", "MTARTECH.NS", "PARAS.NS", "AZAD.NS",
+    "PTCIL.NS", "DYNAMATECH.NS",
+    "HAL.NS", "BEL.NS", "BDL.NS",
+    "MAZDOCK.NS", "GRSE.NS", "COCHINSHIP.NS",
+    "BEML.NS", "SOLARINDS.NS",
+    "ASTRAMICRO.NS", "ZENTEC.NS", "IDEAFORGE.NS",
+    "MIDHANI.NS", "BHARATFORG.NS",
 ]
-
-
 def fetch_and_store_stock(ticker: str, retries: int = 2) -> bool:
     """Fetch fundamentals + 6 months of daily history for one ticker
     and upsert into the database. Returns True on success, False if

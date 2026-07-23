@@ -1,0 +1,17 @@
+name: Scheduled data refresh
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call backend /refresh endpoint
+        run: |
+          curl -X POST "https://finpulse-fn4r.onrender.com/refresh" \
+            --max-time 180 \
+            --fail-with-body \
+            || echo "Refresh call failed or backend was asleep - will retry next scheduled run"
