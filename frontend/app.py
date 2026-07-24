@@ -58,10 +58,16 @@ st.sidebar.title("📈 FinPulse")
 st.sidebar.caption("Indian equity market monitoring dashboard")
 
 if st.sidebar.button("🔄 Refresh live data"):
-    result = trigger_refresh()
-    st.sidebar.success(result["message"])
-    st.cache_data.clear()
-
+    try:
+        result = trigger_refresh()
+        st.sidebar.success(result["message"])
+        st.cache_data.clear()
+    except Exception:
+        st.sidebar.error(
+            "⚠️ Live refresh failed - this is expected on the deployed "
+            "version (see note below). Data still updates automatically "
+            "via a scheduled job."
+        )
 st.sidebar.caption(
     "ℹ️ Live refresh works reliably when running locally. On the deployed "
     "version, Yahoo Finance blocks requests from cloud hosting IPs (Render, "
@@ -95,7 +101,7 @@ if stocks_df.empty:
 # Show data freshness - important given the deployed version uses
 # pre-fetched/scheduled data rather than fetching on every request.
 if "last_updated" in stocks_df.columns and not stocks_df["last_updated"].isna().all():
-    most_recent = pd.to_datetime(stocks_df["last_updated"]).max()
+    most_recent = pd.to_datetime(stocks_df["last_updated"], format="mixed").max()
     st.caption(f"📅 Data last updated: {most_recent.strftime('%d %b %Y, %H:%M UTC')}")
 
 # --- Market summary cards ---
