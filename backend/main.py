@@ -217,3 +217,21 @@ def ingest_data(payload: IngestPayload, x_ingest_token: str = Header(default="")
         written += 1
 
     return {"message": f"Ingested {written} stock record(s)"}
+
+@app.delete("/stocks/{ticker}")
+def delete_stock(ticker: str, x_ingest_token: str = Header(default="")):
+    """Remove a ticker and its history from the database. Protected by the
+    same shared-secret token as /ingest, since this is also a
+    write/destructive operation that shouldn't be publicly callable."""
+    expected_token = os.environ.get("INGEST_TOKEN")
+    if not expected_token or x_ingest_token != expected_token:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Ingest-Token header")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM stocks WHERE ticker = ?", (ticker,))
+    cur.execute("DELETE FROM price_history WHERE ticker = ?", (ticker,))
+    deleted = cur.rowcount
+    conn.commit()
+    conn.close()
+    return {"message": f"Deleted ticker '{ticker}'", "rows_affected": deleted}
