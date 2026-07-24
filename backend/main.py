@@ -9,17 +9,28 @@ Endpoints:
     GET  /stocks             -> list all tracked stocks with latest snapshot
     GET  /stocks/{ticker}    -> single stock detail + historical prices
     GET  /market-summary     -> aggregate market stats
-    POST /refresh             -> re-fetch live data from yfinance for all tickers
+    POST /refresh             -> re-fetch live data from yfinance directly
+                                  on Render (works locally; typically fails
+                                  on Render itself - see /ingest below)
+    POST /ingest               -> accept pre-fetched data pushed from
+                                  elsewhere (used by the GitHub Actions
+                                  scheduled job, which fetches via yfinance
+                                  from its own IP and pushes the results
+                                  here, since Render's own IP is blocked
+                                  by Yahoo Finance)
 
 Run locally with:
     uvicorn main:app --reload
 """
 
-from fastapi import FastAPI, HTTPException
+import os
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from pydantic import BaseModel
+from typing import List, Optional
 
-from database import init_db, get_connection
+from database import init_db, get_connection, upsert_stock
 import data_fetcher
 
 
@@ -39,6 +50,7 @@ async def lifespan(app: FastAPI):
     init_db()
     yield
     # (no shutdown cleanup needed for SQLite)
+
 
 app = FastAPI(title="FinPulse API", version="1.0", lifespan=lifespan)
 
@@ -134,10 +146,74 @@ def get_market_summary():
 @app.post("/refresh")
 def refresh_data():
     """Manually trigger a fresh pull of live data from yfinance for all
-    tracked tickers. Useful since free hosting tiers may not support
-    background schedulers."""
+    tracked tickers. Works reliably when the backend itself is running
+    somewhere with an unblocked IP (e.g. locally); on Render this
+    typically fails since Yahoo Finance blocks cloud-hosting IP ranges.
+    For the production refresh path, see /ingest."""
     success, failed = data_fetcher.fetch_all()
     return {
         "message": f"Refreshed {success}/{len(data_fetcher.TICKERS)} tickers",
         "failed_tickers": failed,
     }
+
+
+class HistoryPoint(BaseModel):
+    date: str
+    open: Optional[float] = None
+    high: Optional[float] = None
+    low: Optional[float] = None
+    close: Optional[float] = None
+    volume: Optional[int] = None
+
+
+class StockRecord(BaseModel):
+    ticker: str
+    company_name: Optional[str] = None
+    sector: Optional[str] = None
+    price: Optional[float] = None
+    prev_close: Optional[float] = None
+    market_cap: Optional[float] = None
+    pe_ratio: Optional[float] = None
+    eps: Optional[float] = None
+    day_high: Optional[float] = None
+    day_low: Optional[float] = None
+    volume: Optional[int] = None
+    last_updated: str
+    history: List[HistoryPoint] = []
+
+
+class IngestPayload(BaseModel):
+    stocks: List[StockRecord]
+
+
+@app.post("/ingest")
+def ingest_data(payload: IngestPayload, x_ingest_token: str = Header(default="")):
+    """Accepts pre-fetched stock data and writes it to the database,
+    WITHOUT making any yfinance/network calls itself. This is the
+    production-safe way to refresh data on Render: the actual fetching
+    happens elsewhere (the GitHub Actions job, or your own machine, using
+    scripts/push_live_data.py) where Yahoo Finance doesn't block the IP,
+    and the result is pushed here over a simple authenticated HTTP call.
+
+    Protected by a shared-secret header so random internet traffic can't
+    write arbitrary data into the database. Set the INGEST_TOKEN
+    environment variable on the backend, and pass the same value as the
+    X-Ingest-Token header when calling this endpoint.
+    """
+    expected_token = os.environ.get("INGEST_TOKEN")
+    if not expected_token:
+        raise HTTPException(
+            status_code=503,
+            detail="INGEST_TOKEN is not configured on this server - set it "
+                   "as an environment variable before using /ingest.",
+        )
+    if x_ingest_token != expected_token:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Ingest-Token header")
+
+    written = 0
+    for stock in payload.stocks:
+        record = stock.model_dump()
+        upsert_stock(record)
+        written += 1
+
+    return {"message": f"Ingested {written} stock record(s)"}

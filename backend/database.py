@@ -70,3 +70,61 @@ def init_db():
 
     conn.commit()
     conn.close()
+
+
+def upsert_stock(record: dict):
+    """Write one stock's snapshot + history into the database. This is the
+    single source of truth for DB writes, used both by data_fetcher.py
+    (when fetching locally, where yfinance calls work fine) and by the
+    /ingest endpoint in main.py (which receives pre-fetched data pushed by
+    the GitHub Actions job, since yfinance calls made directly FROM Render
+    get blocked by Yahoo Finance's cloud-IP rate limiting - see
+    PROJECT_REPORT.md for the full explanation).
+
+    Expected shape of `record`:
+    {
+        "ticker": str, "company_name": str, "sector": str, "price": float,
+        "prev_close": float, "market_cap": float, "pe_ratio": float,
+        "eps": float, "day_high": float, "day_low": float, "volume": int,
+        "last_updated": str (ISO timestamp),
+        "history": [
+            {"date": "YYYY-MM-DD", "open": float, "high": float,
+             "low": float, "close": float, "volume": int}, ...
+        ]
+    }
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO stocks (ticker, company_name, sector, price, prev_close,
+                             market_cap, pe_ratio, eps, day_high, day_low,
+                             volume, last_updated)
+        VALUES (:ticker, :company_name, :sector, :price, :prev_close,
+                :market_cap, :pe_ratio, :eps, :day_high, :day_low,
+                :volume, :last_updated)
+        ON CONFLICT(ticker) DO UPDATE SET
+            company_name=excluded.company_name,
+            sector=excluded.sector,
+            price=excluded.price,
+            prev_close=excluded.prev_close,
+            market_cap=excluded.market_cap,
+            pe_ratio=excluded.pe_ratio,
+            eps=excluded.eps,
+            day_high=excluded.day_high,
+            day_low=excluded.day_low,
+            volume=excluded.volume,
+            last_updated=excluded.last_updated
+    """, record)
+
+    for row in record.get("history", []):
+        cur.execute("""
+            INSERT INTO price_history (ticker, date, open, high, low, close, volume)
+            VALUES (:ticker, :date, :open, :high, :low, :close, :volume)
+            ON CONFLICT(ticker, date) DO UPDATE SET
+                open=excluded.open, high=excluded.high, low=excluded.low,
+                close=excluded.close, volume=excluded.volume
+        """, {**row, "ticker": record["ticker"]})
+
+    conn.commit()
+    conn.close()

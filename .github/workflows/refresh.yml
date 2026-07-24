@@ -1,17 +1,35 @@
 name: Scheduled data refresh
 
+# Correct architecture: this job fetches live data from yfinance ITSELF
+# (using GitHub's IP, not Render's), then pushes the result to the
+# backend's /ingest endpoint. The backend never calls yfinance on its own
+# in this flow - that's what avoids Yahoo Finance's cloud-IP blocking.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   BACKEND_URL   - e.g. https://finpulse-fn4r.onrender.com
+#   INGEST_TOKEN  - shared secret, must match the INGEST_TOKEN env var
+#                   set on the Render backend
+
 on:
   schedule:
-    - cron: "0 4 * * *"
-  workflow_dispatch: {}
+    - cron: "0 4 * * *"   # once daily, 04:00 UTC (~9:30 AM IST)
+  workflow_dispatch: {}    # allows manually triggering from the Actions tab
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - name: Call backend /refresh endpoint
-        run: |
-          curl -X POST "https://finpulse-fn4r.onrender.com/refresh" \
-            --max-time 180 \
-            --fail-with-body \
-            || echo "Refresh call failed or backend was asleep - will retry next scheduled run"
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install yfinance requests
+
+      - name: Fetch live data and push to backend
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+        run: python scripts/push_live_data.py
