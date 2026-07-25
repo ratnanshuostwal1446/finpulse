@@ -1,156 +1,378 @@
-# FinPulse — Stock Market Monitoring Platform
+\# FinPulse — Stock Market Monitoring Platform
 
-**Live Deployment:**
-- Frontend (Dashboard): https://finpulse-7mxpoux9kjtzr5ctjp3kbi.streamlit.app/
-- Backend (REST API + docs): https://finpulse-fn4r.onrender.com/docs
 
-FinPulse tracks 20 NSE-listed Indian companies and displays live +
-historical market data (price, market cap, P/E, EPS) through an
-interactive dashboard, backed by a REST API and a SQLite database.
+
+\*\*Live Deployment:\*\*
+
+\- Frontend (Dashboard): https://finpulse-7mxpoux9kjtzr5ctjp3kbi.streamlit.app/
+
+\- Backend (REST API + docs): https://finpulse-fn4r.onrender.com/docs
+
+
+
+FinPulse tracks 20 NSE-listed Indian companies across six sectors (IT,
+
+Banking, Defense, Telecom, Metal, Consumer) and displays live +
+
+historical market data through an interactive dashboard, backed by a
+
+REST API and a SQLite database.
+
+
 
 Built for SoFI AlgoLabs Assignment 1.
 
-## Architecture
+
+
+\## Companies Tracked
+
+
+
+| Sector | Companies |
+
+|---|---|
+
+| IT | TCS, HCL Technologies |
+
+| Banking | ICICI Bank, Axis Bank, SBI, Bank of Baroda, Bajaj Finance |
+
+| Defense | Bharat Electronics, HAL, Sigma Advanced Systems, Azad Engineering, Data Patterns, Paras Defence |
+
+| Telecom | Bharti Airtel |
+
+| Metal | Hindalco, Hindustan Zinc, Polycab India |
+
+| Consumer | Trent, Aditya Birla Fashion \& Retail, Hindustan Unilever |
+
+
+
+Sector labels are custom-assigned (see `SECTOR\_OVERRIDE` in the code)
+
+rather than using yfinance's default classification, so the dashboard
+
+groups companies the way an analyst actually would, not by generic
+
+categories like "Basic Materials" or "Financial Services."
+
+
+
+\## Architecture
+
+
+
+FinPulse has two independent data-refresh paths, because of a real
+
+production constraint discovered during development: \*\*Yahoo Finance
+
+blocks requests from cloud-hosting IP ranges\*\* (Render, AWS, etc.), so
+
+the backend cannot reliably fetch live data on its own once deployed.
+
+
 
 ```
-                    ┌──────────────┐        ┌─────────────────┐
-   yfinance API ───▶│  data_fetcher │───────▶│  SQLite DB       │
-   (Yahoo Finance)   │   .py         │        │  (finpulse.db)   │
-                    └──────────────┘        └────────┬─────────┘
-                                                        │
-                                              ┌─────────▼─────────┐
-                                              │   FastAPI backend  │
-                                              │   (main.py)         │
-                                              │   REST endpoints    │
-                                              └─────────┬─────────┘
-                                                        │ HTTP (JSON)
-                                              ┌─────────▼─────────┐
-                                              │  Streamlit frontend │
-                                              │  (app.py)            │
-                                              │  Dashboard / charts   │
-                                              └────────────────────┘
+
+LOCAL DEVELOPMENT PATH (works because your home IP isn't blocked)
+
+&#x20;   yfinance --> data\_fetcher.py --> SQLite --> FastAPI --> Streamlit
+
+&#x20;                (POST /refresh triggers this directly)
+
+
+
+PRODUCTION PATH (the one that actually works once deployed)
+
+&#x20;   yfinance --> scripts/push\_live\_data.py --> POST /ingest --> SQLite --> FastAPI --> Streamlit
+
+&#x20;                (runs on GitHub Actions, NOT on Render -
+
+&#x20;                 GitHub's IP isn't blocked by Yahoo Finance)
+
 ```
 
-The **frontend never touches the database directly** — it only calls
-the backend's REST endpoints. This mirrors how real web apps separate
-concerns: the backend owns the data, the frontend just displays it.
 
-## Tech Stack
+
+The backend itself never calls yfinance in the production path — it
+
+only receives pre-fetched data over an authenticated HTTP endpoint.
+
+This is why there are two separate scripts with near-identical fetch
+
+logic (`backend/data\_fetcher.py` for local use, `scripts/push\_live\_data.py`
+
+for the GitHub Actions job): they can't share a Python import, since
+
+the Actions job runs standalone without the rest of the backend
+
+package installed.
+
+
+
+A GitHub Actions workflow (`.github/workflows/refresh.yml`) runs this
+
+production path automatically once daily, and can also be triggered
+
+manually from the repo's Actions tab for on-demand refreshes.
+
+
+
+\## Tech Stack
+
+
 
 | Layer      | Technology              |
+
 |------------|--------------------------|
+
 | Data       | yfinance (Yahoo Finance) |
+
 | Database   | SQLite                   |
+
 | Backend    | FastAPI + Uvicorn        |
+
 | Frontend   | Streamlit + Plotly       |
+
+| Automation | GitHub Actions           |
+
 | Deployment | Render (backend), Streamlit Community Cloud (frontend) |
 
-## Project Structure
+
+
+\## Project Structure
+
+
 
 ```
+
 finpulse/
+
+├── .github/workflows/
+
+│   └── refresh.yml        # Scheduled + manual production data refresh
+
 ├── backend/
-│   ├── main.py            # FastAPI app + REST endpoints
-│   ├── database.py        # SQLite connection + schema
-│   ├── data_fetcher.py    # Pulls data from yfinance, stores in DB
+
+│   ├── main.py             # FastAPI app + REST endpoints
+
+│   ├── database.py         # SQLite connection + schema + shared upsert logic
+
+│   ├── data\_fetcher.py     # Local-only fetch path (yfinance -> SQLite directly)
+
 │   ├── requirements.txt
-│   └── finpulse.db        # created automatically on first run
+
+│   └── finpulse.db         # Seeded with real data; also regenerable locally
+
+├── scripts/
+
+│   └── push\_live\_data.py   # Production fetch path (yfinance -> POST /ingest)
+
 ├── frontend/
-│   ├── app.py              # Streamlit dashboard
+
+│   ├── app.py               # Streamlit dashboard
+
 │   ├── requirements.txt
+
 │   └── .streamlit/
+
 │       └── secrets.toml.example
-├── PROJECT_REPORT.md
+
+├── PROJECT\_REPORT.md
+
 ├── .gitignore
+
 └── README.md
+
 ```
 
-## Database Design
 
-**`stocks`** — one row per ticker, overwritten on every refresh (latest snapshot):
-`ticker (PK), company_name, sector, price, prev_close, market_cap, pe_ratio, eps, day_high, day_low, volume, last_updated`
 
-**`price_history`** — one row per (ticker, date), appended over time:
+\## Database Design
+
+
+
+\*\*`stocks`\*\* — one row per ticker, upserted on every refresh (latest snapshot):
+
+`ticker (PK), company\_name, sector, price, prev\_close, market\_cap, pe\_ratio, eps, day\_high, day\_low, volume, last\_updated`
+
+
+
+\*\*`price\_history`\*\* — one row per (ticker, date), appended over time:
+
 `id (PK), ticker, date, open, high, low, close, volume`, unique on `(ticker, date)` so re-fetching never creates duplicates.
 
-## REST API Endpoints
+
+
+Both the local fetch path and the production `/ingest` path write
+
+through a single shared function (`database.upsert\_stock()`), so the
+
+write logic can't drift between the two paths.
+
+
+
+\## REST API Endpoints
+
+
 
 | Method | Endpoint            | Description                                    |
-|--------|----------------------|-------------------------------------------------|
-| GET    | `/`                  | Health check                                    |
-| GET    | `/stocks`            | List latest snapshot for all 20 companies        |
-| GET    | `/stocks/{ticker}`   | Single company detail + full price history       |
-| GET    | `/market-summary`    | Total market cap, avg P/E, top gainers/losers    |
-| POST   | `/refresh`           | Re-fetch live data from yfinance for all tickers |
 
-Interactive API docs are auto-generated by FastAPI at `/docs` once running.
+|--------|----------------------|---------------------------------------------------|
 
-## Running Locally
+| GET    | `/`                  | Health check                                       |
+
+| GET    | `/stocks`            | List latest snapshot for all 20 companies          |
+
+| GET    | `/stocks/{ticker}`   | Single company detail + full price history          |
+
+| DELETE | `/stocks/{ticker}`   | Remove a ticker and its history (auth required)      |
+
+| GET    | `/market-summary`    | Total market cap, market-cap-weighted avg P/E, gainers/losers |
+
+| POST   | `/refresh`           | Local-only: fetch live data directly (fails on Render, see Architecture) |
+
+| POST   | `/ingest`             | Production: accept pre-fetched data pushed from GitHub Actions (auth required) |
+
+
+
+Interactive API docs are auto-generated by FastAPI at `/docs`.
+
+
+
+\### A note on the average P/E calculation
+
+`/market-summary`'s `average\_pe\_ratio` is a \*\*market-cap-weighted
+
+average\*\*, not a simple mean: `Sum(P/E x market\_cap) / Sum(market\_cap)`
+
+across all stocks with both values available. This gives larger
+
+companies proportionally more influence on the number, which better
+
+reflects "what the market as a whole is paying" than an unweighted
+
+average that would let a single small-cap outlier with an extreme P/E
+
+skew the result as much as a mega-cap.
+
+
+
+\## Running Locally
+
+
 
 You'll need Python 3.10+ and two terminal windows.
 
-**Terminal 1 — Backend:**
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn main:app --reload
-```
-Backend runs at `http://localhost:8000`. Visit `http://localhost:8000/docs`
-to see and test the API directly. On first run it will auto-fetch data
-for all 20 tickers (takes ~20-40 seconds).
 
-**Terminal 2 — Frontend:**
+
+\*\*Terminal 1 — Backend:\*\*
+
 ```bash
-cd frontend
+
+cd backend
+
 python -m venv venv
-source venv/bin/activate
+
+source venv/bin/activate      # Windows: venv\\Scripts\\activate
+
 pip install -r requirements.txt
-cp .streamlit/secrets.toml.example .streamlit/secrets.toml
-streamlit run app.py
+
+uvicorn main:app --reload
+
 ```
+
+Backend runs at `http://localhost:8000`. Visit `http://localhost:8000/docs`
+
+to test the API directly. The repo ships with a pre-seeded `finpulse.db`;
+
+to force a fresh local fetch, delete it first and call `POST /refresh`.
+
+
+
+\*\*Terminal 2 — Frontend:\*\*
+
+```bash
+
+cd frontend
+
+python -m venv venv
+
+source venv/bin/activate
+
+pip install -r requirements.txt
+
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+
+streamlit run app.py
+
+```
+
 Dashboard opens at `http://localhost:8501`.
 
-## Deployment
 
-**Backend (Render):**
-1. Push this repo to GitHub.
-2. On Render: New → Web Service → connect the repo.
-3. Root directory: `backend`
-4. Build command: `pip install -r requirements.txt`
-5. Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-6. Deploy. Note the resulting URL (e.g. `https://finpulse-backend.onrender.com`).
 
-**Frontend (Streamlit Community Cloud):**
-1. On share.streamlit.io: New app → select repo → main file path: `frontend/app.py`
-2. In App settings → Secrets, add:
-   ```
-   API_URL = "https://finpulse-backend.onrender.com"
-   ```
-3. Deploy.
+\## Deployment
+
+
+
+\*\*Backend (Render):\*\*
+
+1\. Push this repo to GitHub.
+
+2\. Render: New -> Web Service -> connect the repo. Root directory: `backend`.
+
+3\. Build command: `pip install -r requirements.txt`
+
+4\. Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+
+5\. Set environment variable `INGEST\_TOKEN` to a secret value (required for `/ingest` and `DELETE` to work).
+
+
+
+\*\*Frontend (Streamlit Community Cloud):\*\*
+
+1\. share.streamlit.io -> New app -> select repo -> main file path: `frontend/app.py`
+
+2\. In App settings -> Secrets: `API\_URL = "https://your-render-url.onrender.com"`
+
+
+
+\*\*Production data refresh (GitHub Actions):\*\*
+
+1\. Repo -> Settings -> Secrets and variables -> Actions, add:
+
+&#x20;  - `BACKEND\_URL` = your Render URL
+
+&#x20;  - `INGEST\_TOKEN` = same value set on Render
+
+2\. The workflow runs daily automatically (04:00 UTC), or trigger manually from the Actions tab -> "Scheduled data refresh" -> "Run workflow".
+
+
 
 Note: Render's free tier spins down after inactivity, so the first
-request after idle time can take ~30-60s to wake up — this is why the
-`/refresh` endpoint exists as a manual trigger rather than relying on
-a background scheduler. Because Yahoo Finance also rate-limits/blocks
-cloud-hosting IP ranges more aggressively than home connections, the
-deployed database was seeded once with real data fetched locally
-rather than relying on a live fetch from Render's servers - see
-PROJECT_REPORT.md for details.
 
-## External APIs / Libraries / AI Tools Used
+request after idle time can take 30-60s to wake up. The dashboard
 
-- **yfinance** — unofficial Yahoo Finance data library, used for all
-  market data (no API key required).
-- **FastAPI**, **Streamlit**, **Plotly**, **pandas** — standard open-source
-  libraries, no AI-generated components.
-- **AI tool disclosure:** Claude (Anthropic) was used to help scaffold
-  and write this codebase, per the assignment's allowance for AI use in
-  the AlgoLabs track. All architecture decisions, code review, and
-  understanding of implementation were done by the applicant.
+shows a friendly "waking up" message rather than a raw error in that
 
-## Known Limitations / Future Improvements
+case.
 
-See `PROJECT_REPORT.md` for the full breakdown of features, challenges,
-and future improvement ideas.
+
+
+\## External APIs / Libraries / AI Tools Used
+
+
+
+\- \*\*yfinance\*\* — unofficial Yahoo Finance data library, used for all market data.
+
+\- \*\*FastAPI\*\*, \*\*Streamlit\*\*, \*\*Plotly\*\*, \*\*pandas\*\*, \*\*requests\*\* — standard open-source libraries.
+
+\- \*\*AI tool disclosure:\*\* Claude (Anthropic) was used to scaffold and iteratively debug this codebase, per the assignment's allowance for AI use in the AlgoLabs track. All architecture decisions, debugging, and understanding of implementation were done collaboratively with the applicant driving decisions and verifying every change locally before deployment.
+
+
+
+\## Known Limitations / Future Improvements
+
+
+
+See `PROJECT\_REPORT.md` for the full breakdown of features, challenges, and future improvement ideas.
+
