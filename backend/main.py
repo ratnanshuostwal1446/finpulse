@@ -112,10 +112,22 @@ def get_market_summary():
 
     if not rows:
         return {"message": "No data yet - call POST /refresh first"}
-
     total_market_cap = sum(r["market_cap"] or 0 for r in rows)
-    pe_values = [r["pe_ratio"] for r in rows if r["pe_ratio"] is not None]
-    avg_pe = sum(pe_values) / len(pe_values) if pe_values else None
+
+    # Market-cap-weighted average P/E: gives more influence to larger
+    # companies rather than treating every stock's multiple equally,
+    # which is the more standard approach in equity research (reflects
+    # "what the market as a whole is paying" rather than an unweighted
+    # blend of small and large companies' multiples).
+    weighted_pe_sum = sum(
+        r["pe_ratio"] * r["market_cap"]
+        for r in rows if r["pe_ratio"] is not None and r["market_cap"] is not None
+    )
+    weighted_pe_denominator = sum(
+        r["market_cap"] for r in rows
+        if r["pe_ratio"] is not None and r["market_cap"] is not None
+    )
+    avg_pe = (weighted_pe_sum / weighted_pe_denominator) if weighted_pe_denominator else None
 
     gainers, losers = [], []
     for r in rows:
