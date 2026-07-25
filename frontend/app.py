@@ -108,7 +108,7 @@ if "last_updated" in stocks_df.columns and not stocks_df["last_updated"].isna().
 summary = get_market_summary()
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Companies Tracked", summary.get("total_companies", "-"))
-col2.metric("Total Market Cap", f"₹{summary.get('total_market_cap', 0) / 1e7:,.0f} Cr"
+col2.metric("Total Market Cap", f"₹{summary.get('total_market_cap', 0) / 1e7:.0f} Cr"
             if summary.get("total_market_cap") else "-")
 col3.metric("Average P/E Ratio", summary.get("average_pe_ratio", "-"))
 col4.metric("Gainers / Losers",
