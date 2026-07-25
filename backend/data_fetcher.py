@@ -15,16 +15,14 @@ from datetime import datetime
 from database import get_connection, upsert_stock
 
 TICKERS = [
-    "SIGMAADV.NS",
-    "DATAPATTNS.NS", "MTARTECH.NS", "PARAS.NS", "AZAD.NS",
-    "PTCIL.NS", "DYNAMATECH.NS",
-    "HAL.NS", "BEL.NS", "BDL.NS",
-    "MAZDOCK.NS", "GRSE.NS", "COCHINSHIP.NS",
-    "BEML.NS", "SOLARINDS.NS",
-    "ASTRAMICRO.NS", "ZENTEC.NS", "IDEAFORGE.NS",
-    "MIDHANI.NS", "BHARATFORG.NS",
+    "TCS.NS", "HCLTECH.NS",  # IT
+    "ICICIBANK.NS", "AXISBANK.NS", "SBIN.NS", "BANKBARODA.NS",  # Banking
+    "BEL.NS", "HAL.NS", "SIGMAADV.NS", "AZAD.NS", "DATAPATTNS.NS", "PARAS.NS",  # Defense
+    "BHARTIARTL.NS",  # Telecom
+    "HINDALCO.NS", "HINDZINC.NS",  # Metal
+    "POLYCAB.NS", "BAJFINANCE.NS",  # Industrials/Financials
+    "TRENT.NS", "ABFRL.NS", "HINDUNILVR.NS",  # Consumer
 ]
-
 
 def fetch_ticker_data(ticker: str, info: dict, hist) -> dict:
     history = [
