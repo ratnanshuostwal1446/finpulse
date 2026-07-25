@@ -246,21 +246,13 @@ diversified, sector-organized selection.
 
 \## AI Tool Usage Disclosure
 
-Claude (Anthropic) was used throughout this project's development —
 
+I used Claude (Anthropic) throughout this project's development —
 initial scaffolding, iterative debugging of real deployment issues,
-
-and implementing UX/data-quality refinements. Every change was tested
-
-locally and verified against live data before being pushed to
-
-production, with the applicant reviewing and confirming each change
-
-rather than accepting code without verification. The applicant can
-
-walk through architecture, data flow, and every implementation
-
-decision in the interview, including the reasoning behind each
-
-debugging fix described above.
-
+and implementing UX/data-quality refinements. I tested every change
+locally and verified it against live data before pushing to
+production, reviewing and confirming each change myself rather than
+accepting code without verification. I can walk through the
+architecture, data flow, and every implementation decision in the
+interview, including the reasoning behind each debugging fix
+described above.
