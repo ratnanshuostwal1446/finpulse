@@ -366,7 +366,7 @@ case.
 
 \- \*\*FastAPI\*\*, \*\*Streamlit\*\*, \*\*Plotly\*\*, \*\*pandas\*\*, \*\*requests\*\* — standard open-source libraries.
 
-\- \*\*AI tool disclosure:\*\* Claude (Anthropic) was used to scaffold and iteratively debug this codebase, per the assignment's allowance for AI use in the AlgoLabs track. All architecture decisions, debugging, and understanding of implementation were done collaboratively with the applicant driving decisions and verifying every change locally before deployment.
+\- \*\*AI tool disclosure:\*\* I used Claude (Anthropic) to scaffold and iteratively debug this codebase, per the assignment's allowance for AI use in the AlgoLabs track. All architecture decisions, debugging, and understanding of implementation were done collaboratively with me driving the decisions and verifying every change locally before deployment.
 
 
 
