@@ -41,6 +41,17 @@ TICKERS = [
     "TRENT.NS", "ABFRL.NS", "HINDUNILVR.NS",
 ]
 
+SECTOR_OVERRIDE = {
+    "TCS.NS": "IT", "HCLTECH.NS": "IT",
+    "ICICIBANK.NS": "Banking", "AXISBANK.NS": "Banking", "SBIN.NS": "Banking",
+    "BANKBARODA.NS": "Banking", "BAJFINANCE.NS": "Banking",
+    "BEL.NS": "Defense", "HAL.NS": "Defense", "SIGMAADV.NS": "Defense",
+    "AZAD.NS": "Defense", "DATAPATTNS.NS": "Defense", "PARAS.NS": "Defense",
+    "BHARTIARTL.NS": "Telecom",
+    "HINDALCO.NS": "Metal", "HINDZINC.NS": "Metal", "POLYCAB.NS": "Metal",
+    "TRENT.NS": "Consumer", "ABFRL.NS": "Consumer", "HINDUNILVR.NS": "Consumer",
+}
+
 def fetch_one(ticker: str, retries: int = 2):
     """Fetch fundamentals + 6mo history for one ticker. Returns a record
     dict on success, or None on failure (after retries)."""
@@ -61,7 +72,7 @@ def fetch_one(ticker: str, retries: int = 2):
             return {
                 "ticker": ticker,
                 "company_name": info.get("longName") or info.get("shortName") or ticker,
-                "sector": info.get("sector", "Unknown"),
+		"sector": SECTOR_OVERRIDE.get(ticker, info.get("sector", "Unknown")),
                 "price": info.get("currentPrice") or info.get("regularMarketPrice"),
                 "prev_close": info.get("previousClose"),
                 "market_cap": info.get("marketCap"),
