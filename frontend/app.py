@@ -57,24 +57,12 @@ def trigger_refresh():
 st.sidebar.title("📈 FinPulse")
 st.sidebar.caption("Indian equity market monitoring dashboard")
 
-if st.sidebar.button("🔄 Refresh live data"):
-    try:
-        result = trigger_refresh()
-        st.sidebar.success(result["message"])
-        st.cache_data.clear()
-    except Exception:
-        st.sidebar.error(
-            "⚠️ Live refresh failed - this is expected on the deployed "
-            "version (see note below). Data still updates automatically "
-            "via a scheduled job."
-        )
 st.sidebar.caption(
-    "ℹ️ Live refresh works reliably when running locally. On the deployed "
-    "version, Yahoo Finance blocks requests from cloud hosting IPs (Render, "
-    "AWS, etc.), so this app relies on data pushed by a scheduled GitHub "
-    "Action instead - see README for details."
+    "ℹ️ Data refreshes automatically once daily via a scheduled GitHub "
+    "Action (fetches live prices and pushes updates to the backend) - "
+    "see the 'Data last updated' timestamp above for freshness. See "
+    "README for architecture details."
 )
-
 st.sidebar.markdown("---")
 
 
