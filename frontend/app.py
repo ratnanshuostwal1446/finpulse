@@ -88,9 +88,14 @@ if stocks_df.empty:
 
 # Show data freshness - important given the deployed version uses
 # pre-fetched/scheduled data rather than fetching on every request.
+
 if "last_updated" in stocks_df.columns and not stocks_df["last_updated"].isna().all():
-    most_recent = pd.to_datetime(stocks_df["last_updated"], format="mixed").max()
-    st.caption(f"📅 Data last updated: {most_recent.strftime('%d %b %Y, %H:%M UTC')}")
+    most_recent_utc = pd.to_datetime(stocks_df["last_updated"], format="mixed").max()
+    # Data is stored in UTC (datetime.utcnow() on the backend); convert to
+    # IST (UTC+5:30) for display, since that's the relevant timezone for
+    # Indian equity data.
+    most_recent_ist = most_recent_utc.tz_localize("UTC").tz_convert("Asia/Kolkata")
+    st.caption(f"📅 Data last updated: {most_recent_ist.strftime('%d %b %Y, %H:%M IST')}")
 
 # --- Market summary cards ---
 summary = get_market_summary()
@@ -110,10 +115,12 @@ display_df = stocks_df[["ticker", "company_name", "sector", "price",
                           "pe_ratio", "eps", "market_cap", "volume"]].copy()
 # Market cap comes from yfinance in raw rupees; convert to crores (1 Cr = 1e7)
 # for readability, matching how Indian equity reports normally present it.
+
 display_df["market_cap"] = (display_df["market_cap"] / 1e7).round(0)
 display_df.columns = ["Ticker", "Company", "Sector", "Price (₹)",
                         "P/E", "EPS", "Market Cap (₹ in Cr)", "Volume"]
-st.dataframe(display_df, use_container_width=True, hide_index=True)
+display_df.index = range(1, len(display_df) + 1)  # 1-20 instead of 0-19
+st.dataframe(display_df, use_container_width=True)
 
 st.markdown("---")
 
