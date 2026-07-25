@@ -174,8 +174,10 @@ compare_tickers = st.multiselect(
 
 if compare_tickers:
     compare_df = stocks_df[stocks_df["ticker"].isin(compare_tickers)].copy()
+    metric_labels = {"pe_ratio": "P/E", "eps": "EPS", "market_cap": "Market Cap", "price": "Price"}
     metric_choice = st.radio(
         "Metric to compare", ["pe_ratio", "eps", "market_cap", "price"],
+        format_func=lambda x: metric_labels[x],
         horizontal=True,
     )
     y_values = compare_df[metric_choice]
