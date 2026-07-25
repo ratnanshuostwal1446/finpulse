@@ -25,21 +25,21 @@ st.set_page_config(page_title="FinPulse", page_icon="📈", layout="wide")
 
 
 # ---- Helper functions to call the backend -----------------------------
-@st.cache_data(ttl=60)  # cache for 60s so we don't hammer the API on every rerun
+@st.cache_data(ttl=60, show_spinner="Loading...")  # cache for 60s so we don't hammer the API on every rerun
 def get_stocks():
     r = requests.get(f"{API_URL}/stocks", timeout=15)
     r.raise_for_status()
     return pd.DataFrame(r.json())
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=60, show_spinner="Loading...")
 def get_stock_detail(ticker):
     r = requests.get(f"{API_URL}/stocks/{ticker}", timeout=15)
     r.raise_for_status()
     return r.json()
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=60, show_spinner="Loading...")
 def get_market_summary():
     r = requests.get(f"{API_URL}/market-summary", timeout=15)
     r.raise_for_status()
