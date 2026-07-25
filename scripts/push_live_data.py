@@ -32,16 +32,14 @@ from datetime import datetime
 # imported from a single shared file (this script runs standalone in
 # GitHub Actions, without the rest of the backend package installed).
 TICKERS = [
-    "SIGMAADV.NS",
-    "DATAPATTNS.NS", "MTARTECH.NS", "PARAS.NS", "AZAD.NS",
-    "PTCIL.NS", "DYNAMATECH.NS",
-    "HAL.NS", "BEL.NS", "BDL.NS",
-    "MAZDOCK.NS", "GRSE.NS", "COCHINSHIP.NS",
-    "BEML.NS", "SOLARINDS.NS",
-    "ASTRAMICRO.NS", "ZENTEC.NS", "IDEAFORGE.NS",
-    "MIDHANI.NS", "BHARATFORG.NS",
+    "TCS.NS", "HCLTECH.NS",
+    "ICICIBANK.NS", "AXISBANK.NS", "SBIN.NS", "BANKBARODA.NS",
+    "BEL.NS", "HAL.NS", "SIGMAADV.NS", "AZAD.NS", "DATAPATTNS.NS", "PARAS.NS",
+    "BHARTIARTL.NS",
+    "HINDALCO.NS", "HINDZINC.NS",
+    "POLYCAB.NS", "BAJFINANCE.NS",
+    "TRENT.NS", "ABFRL.NS", "HINDUNILVR.NS",
 ]
-
 
 def fetch_one(ticker: str, retries: int = 2):
     """Fetch fundamentals + 6mo history for one ticker. Returns a record
