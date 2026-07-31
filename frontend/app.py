@@ -57,13 +57,6 @@ def trigger_refresh():
 st.sidebar.title("📈 FinPulse")
 st.sidebar.caption("Indian equity market monitoring dashboard")
 
-st.sidebar.caption(
-    "ℹ️ Data refreshes automatically once daily via a scheduled GitHub "
-    "Action (fetches live prices and pushes updates to the backend) - "
-    "see the 'Data last updated' timestamp above for freshness. See "
-    "README for architecture details."
-)
-st.sidebar.markdown("---")
 
 
 # ---- Main content ---------------------------------------------------------
