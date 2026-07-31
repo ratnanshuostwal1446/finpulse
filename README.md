@@ -347,14 +347,17 @@ Dashboard opens at `http://localhost:8501`.
 2\. The workflow runs daily automatically (04:00 UTC), or trigger manually from the Actions tab -> "Scheduled data refresh" -> "Run workflow".
 
 
-
-Note: Render's free tier spins down after inactivity, so the first
-
-request after idle time can take 30-60s to wake up. The dashboard
-
-shows a friendly "waking up" message rather than a raw error in that
-
-case.
+Note: both free-tier hosting platforms used here sleep after
+inactivity. Render (backend) spins down after idle time, causing the
+first request to take 30-60s to wake up - the dashboard shows a
+friendly "waking up" message rather than a raw error in that case.
+Streamlit Community Cloud (frontend) has separate, independent sleep
+behavior of its own: if the app itself hasn't been visited in a
+while, Streamlit shows its own standard "This app has gone to sleep
+due to inactivity" screen with a one-click wake-up button, before the
+dashboard loads at all. This is standard Streamlit Cloud platform
+behavior, not specific to this app, and any visitor to any free-tier
+Streamlit app would see the same screen.
 
 
 
