@@ -71,15 +71,13 @@ st.title("FinPulse — Market Dashboard")
 
 try:
     stocks_df = get_stocks()
-except Exception as e:
+except Exception:
     st.warning(
         "⏳ Couldn't reach the backend just now. If this app (or the "
         "backend on Render) has been idle for a while, it may be waking "
         "up from sleep - this can take 30-60 seconds on the free tier. "
         "Please wait a moment and refresh this page."
     )
-    with st.expander("Technical details"):
-        st.code(f"API_URL: {API_URL}\nError: {e}")
     st.stop()
 
 if stocks_df.empty:

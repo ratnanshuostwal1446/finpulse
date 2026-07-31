@@ -226,6 +226,8 @@ diversified, sector-organized selection.
 
 \## Future Improvements
 
+\- Migrate from SQLite to a persistently-hosted database (Render's free PostgreSQL, or an external provider such as Supabase). Currently, the automated GitHub Actions refresh successfully fetches and pushes data on each scheduled run, but writes do not survive Render free tier's ephemeral filesystem, which resets on every service restart/sleep-wake cycle. This was discovered and diagnosed during development but not fixed due to time constraints; the seeded database committed to the repository remains the source of truth for live-deployed data until this migration is done.
+
 \- Replace yfinance with a licensed market data API to avoid the
 
 &#x20; unofficial-scraper rate limiting and cloud-IP blocking entirely.

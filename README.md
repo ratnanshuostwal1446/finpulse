@@ -338,14 +338,12 @@ Dashboard opens at `http://localhost:8501`.
 
 \*\*Production data refresh (GitHub Actions):\*\*
 
-1\. Repo -> Settings -> Secrets and variables -> Actions, add:
+1. Repo -> Settings -> Secrets and variables -> Actions, add:
+   - `BACKEND_URL` = your Render URL
+   - `INGEST_TOKEN` = same value set on Render
+2. The workflow runs daily automatically (04:00 UTC), or trigger manually from the Actions tab -> "Scheduled data refresh" -> "Run workflow".
 
-&#x20;  - `BACKEND\_URL` = your Render URL
-
-&#x20;  - `INGEST\_TOKEN` = same value set on Render
-
-2\. The workflow runs daily automatically (04:00 UTC), or trigger manually from the Actions tab -> "Scheduled data refresh" -> "Run workflow".
-
+**Known limitation:** the scheduled workflow successfully fetches data and writes it to the backend on each run (visible as a green checkmark in the Actions tab), but on Render's free tier, this does not currently persist reliably. Render's free web services use an ephemeral filesystem - any changes to local files, including a SQLite database, are wiped every time the service redeploys, restarts, or wakes up from its automatic inactivity-based sleep (see Render's own docs: https://render.com/docs/free). Since Render's free tier restarts frequently under normal usage, SQLite writes made via `/ingest` between restarts do not survive. The dashboard's live data therefore reflects whichever `finpulse.db` was last committed directly to this repository, not necessarily the most recent automated fetch. The correct long-term fix is migrating from SQLite to a persistently-hosted database (e.g., Render's free PostgreSQL, or an external provider such as Supabase) - see PROJECT_REPORT.md for details.
 
 Note: both free-tier hosting platforms used here sleep after
 inactivity. Render (backend) spins down after idle time, causing the
